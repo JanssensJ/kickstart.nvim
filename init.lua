@@ -395,7 +395,18 @@ require('lazy').setup({
         --     i = { ['<c-enter>'] = 'to_fuzzy_refine' },
         --   },
         -- },
-        -- pickers = {}
+        pickers = {
+          find_files = {
+            file_ignore_patterns = { 'node_modules', '.git', '.venv' },
+            hidden = true,
+          },
+        },
+        live_grep = {
+          file_ignore_patterns = { 'node_modules', '.git', '.venv' },
+          additional_args = function(_)
+            return { '--hidden' }
+          end,
+        },
         extensions = {
           ['ui-select'] = {
             require('telescope.themes').get_dropdown(),
@@ -635,7 +646,31 @@ require('lazy').setup({
         --    https://github.com/pmizio/typescript-tools.nvim
         --
         -- But for many setups, the LSP (`ts_ls`) will work just fine
-        -- ts_ls = {},
+        ts_ls = {},
+        ruff = {},
+        pylsp = {
+          settings = {
+            pylsp = {
+              plugins = {
+                pyflakes = { enable = false },
+                pycodestyle = { enable = false },
+                autopep8 = { enable = false },
+                yapf = { enable = false },
+                mccabe = { enable = false },
+                pylsp_mypy = { enable = false },
+                pylsp_black = { enable = false },
+                pylsp_isort = { enable = false },
+              },
+            },
+          },
+        },
+        html = { filetypes = { 'html', 'twig', 'hbs' } },
+        cssls = {},
+        tailwindcss = {},
+        dockerls = {},
+        sqlls = {},
+        terraformls = {},
+        jsonls = {},
         --
 
         lua_ls = {
@@ -730,7 +765,7 @@ require('lazy').setup({
 
   { -- Autocompletion
     'hrsh7th/nvim-cmp',
-    event = 'InsertEnter',
+    --   event = 'InsertEnter',
     dependencies = {
       -- Snippet Engine & its associated nvim-cmp source
       {
@@ -770,6 +805,33 @@ require('lazy').setup({
       local luasnip = require 'luasnip'
       luasnip.config.setup {}
 
+      local kind_icons = {
+        Text = '󰉿',
+        Method = 'm',
+        Function = '󰊕',
+        Constructor = '',
+        Field = '',
+        Variable = '󰆧',
+        Class = '󰌗',
+        Interface = '',
+        Module = '',
+        Property = '',
+        Unit = '',
+        Value = '󰎠',
+        Enum = '',
+        Keyword = '󰌋',
+        Snippet = '',
+        Color = '󰏘',
+        File = '󰈙',
+        Reference = '',
+        Folder = '󰉋',
+        EnumMember = '',
+        Constant = '󰇽',
+        Struct = '',
+        Event = '',
+        Operator = '󰆕',
+        TypeParameter = '󰊄',
+      }
       cmp.setup {
         snippet = {
           expand = function(args)
@@ -799,9 +861,9 @@ require('lazy').setup({
 
           -- If you prefer more traditional completion keymaps,
           -- you can uncomment the following lines
-          --['<CR>'] = cmp.mapping.confirm { select = true },
-          --['<Tab>'] = cmp.mapping.select_next_item(),
-          --['<S-Tab>'] = cmp.mapping.select_prev_item(),
+          ['<CR>'] = cmp.mapping.confirm { select = true },
+          -- ['<Tab>'] = cmp.mapping.select_next_item(),
+          -- ['<S-Tab>'] = cmp.mapping.select_prev_item(),
 
           -- Manually trigger a completion from nvim-cmp.
           --  Generally you don't need this, because nvim-cmp will display
@@ -829,6 +891,25 @@ require('lazy').setup({
 
           -- For more advanced Luasnip keymaps (e.g. selecting choice nodes, expansion) see:
           --    https://github.com/L3MON4D3/LuaSnip?tab=readme-ov-file#keymaps
+          -- Select next/previous item with Tab / Shift + Tab
+          ['<Tab>'] = cmp.mapping(function(fallback)
+            if cmp.visible() then
+              cmp.select_next_item()
+            elseif luasnip.expand_or_locally_jumpable() then
+              luasnip.expand_or_jump()
+            else
+              fallback()
+            end
+          end, { 'i', 's' }),
+          ['<S-Tab>'] = cmp.mapping(function(fallback)
+            if cmp.visible() then
+              cmp.select_prev_item()
+            elseif luasnip.locally_jumpable(-1) then
+              luasnip.jump(-1)
+            else
+              fallback()
+            end
+          end, { 'i', 's' }),
         },
         sources = {
           {
@@ -839,6 +920,19 @@ require('lazy').setup({
           { name = 'nvim_lsp' },
           { name = 'luasnip' },
           { name = 'path' },
+        },
+        formatting = {
+          fields = { 'kind', 'abbr', 'menu' },
+          format = function(entry, vim_item)
+            vim_item.kind = string.format('%s', kind_icons[vim_item.kind])
+            vim_item.menu = ({
+              nvim_lsp = '[LSP]',
+              luasnip = '[Snippet]',
+              buffer = '[Buffer]',
+              path = '[Path]',
+            })[entry.source.name]
+            return vim_item
+          end,
         },
       }
     end,
@@ -908,7 +1002,28 @@ require('lazy').setup({
     main = 'nvim-treesitter.configs', -- Sets main module to use for opts
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
     opts = {
-      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' },
+      ensure_installed = {
+        'bash',
+        'c',
+        'diff',
+        'html',
+        'lua',
+        'luadoc',
+        'markdown',
+        'markdown_inline',
+        'query',
+        'vim',
+        'vimdoc',
+        'javascript',
+        'typescript',
+        'regex',
+        'terraform',
+        'sql',
+        'dockerfile',
+        'json',
+        'python',
+        'gitignore',
+      },
       -- Autoinstall languages that are not installed
       auto_install = true,
       highlight = {
@@ -948,7 +1063,7 @@ require('lazy').setup({
   --    This is the easiest way to modularize your config.
   --
   --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
-  -- { import = 'custom.plugins' },
+  { import = 'custom.plugins' },
   --
   -- For additional information with loading, sourcing and examples see `:help lazy.nvim-🔌-plugin-spec`
   -- Or use telescope!
